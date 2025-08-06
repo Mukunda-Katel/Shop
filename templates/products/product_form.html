@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}
+    {% if product %}Edit Product{% else %}Add New Product{% endif %} - ShoppingMart
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h3>
+                    <i class="fas fa-{% if product %}edit{% else %}plus{% endif %}"></i>
+                    {% if product %}Edit Product{% else %}Add New Product{% endif %}
+                </h3>
+            </div>
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    {{ form|crispy }}
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-save"></i> 
+                                {% if product %}Update Product{% else %}Create Product{% endif %}
+                            </button>
+                        </div>
+                        <div class="col-md-6">
+                            <a href="{% if product %}{% url 'products:detail' product.pk %}{% else %}{% url 'products:list' %}{% endif %}" 
+                               class="btn btn-secondary w-100">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        {% if product %}
+        <div class="mt-3">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6 class="card-title">Current Product Preview</h6>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <img src="{{ product.image.url }}" alt="{{ product.name }}" 
+                                 class="img-fluid rounded" style="max-height: 200px; object-fit: cover;">
+                        </div>
+                        <div class="col-md-8">
+                            <h5>{{ product.name }}</h5>
+                            <p class="text-muted">{{ product.description|truncatewords:20 }}</p>
+                            <p><strong>Price:</strong> ${{ product.price }}</p>
+                            <p><strong>Stock:</strong> {{ product.stock }} items</p>
+                            <p><strong>Category:</strong> {{ product.category.name }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{% if not product %}
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="alert alert-info">
+            <h5><i class="fas fa-lightbulb"></i> Tips for Adding Products:</h5>
+            <ul class="mb-0">
+                <li>Use high-quality images for better visibility</li>
+                <li>Write detailed descriptions to attract buyers</li>
+                <li>Set competitive prices based on market research</li>
+                <li>Keep stock levels updated for better customer experience</li>
+                <li>Choose the most appropriate category for better discoverability</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Preview image before upload
+document.addEventListener('DOMContentLoaded', function() {
+    const imageInput = document.querySelector('input[type="file"]');
+    if (imageInput) {
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Create preview if it doesn't exist
+                    let preview = document.querySelector('#image-preview');
+                    if (!preview) {
+                        preview = document.createElement('div');
+                        preview.id = 'image-preview';
+                        preview.className = 'mt-3';
+                        imageInput.closest('.form-group').appendChild(preview);
+                    }
+                    preview.innerHTML = `
+                        <p><strong>Preview:</strong></p>
+                        <img src="${e.target.result}" class="img-thumbnail" style="max-width: 200px; max-height: 200px;">
+                    `;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

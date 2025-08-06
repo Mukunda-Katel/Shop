@@ -1,0 +1,340 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ product.name }} - ShoppingMart{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Product Image -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" 
+                 style="height: 400px; object-fit: cover;">
+        </div>
+    </div>
+    
+    <!-- Product Information -->
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h1 class="card-title">{{ product.name }}</h1>
+                <p class="text-muted mb-2">
+                    <i class="fas fa-tag"></i> {{ product.category.name }}
+                </p>
+                
+                <div class="mb-3">
+                    <span class="h3 text-success">${{ product.price }}</span>
+                    {% if product.stock > 0 %}
+                        <span class="badge bg-success ms-2">{{ product.stock }} in stock</span>
+                    {% else %}
+                        <span class="badge bg-danger ms-2">Out of Stock</span>
+                    {% endif %}
+                </div>
+                
+                <p class="card-text">{{ product.description }}</p>
+                
+                <!-- Seller Information -->
+                <div class="border-top pt-3 mb-3">
+                    <h6><i class="fas fa-user"></i> Seller Information</h6>
+                    <div class="d-flex align-items-center">
+                        <img src="{{ product.seller.profile.profile_picture.url }}" 
+                             alt="{{ product.seller.username }}" class="rounded-circle me-2" 
+                             width="40" height="40" style="object-fit: cover;">
+                        <div>
+                            <strong>{{ product.seller.get_full_name|default:product.seller.username }}</strong>
+                            <small class="text-muted d-block">@{{ product.seller.username }}</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Product Actions -->
+                <div class="d-grid gap-2">
+                    {% if user.is_authenticated and user == product.seller %}
+                        <!-- Owner Actions -->
+                        <div class="btn-group" role="group">
+                            <a href="{% url 'products:update' product.pk %}" class="btn btn-warning">
+                                <i class="fas fa-edit"></i> Edit Product
+                            </a>
+                            <a href="{% url 'products:delete' product.pk %}" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Delete Product
+                            </a>
+                        </div>
+                    {% else %}
+                        <!-- Buyer Actions -->
+                        {% if product.stock > 0 and product.available %}
+                            <button class="btn btn-primary btn-lg" onclick="addToCart({{ product.pk }})">
+                                <i class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
+                        {% else %}
+                            <button class="btn btn-secondary btn-lg" disabled>
+                                <i class="fas fa-times"></i> Out of Stock
+                            </button>
+                        {% endif %}
+                    {% endif %}
+                    
+                    <!-- Like Button -->
+                    {% if user.is_authenticated %}
+                        <button class="btn btn-outline-danger" onclick="toggleLike({{ product.pk }})" 
+                                id="like-btn-{{ product.pk }}">
+                            {% if user_has_liked %}
+                                <i class="fas fa-heart"></i> Liked
+                            {% else %}
+                                <i class="far fa-heart"></i> Like
+                            {% endif %}
+                            <span id="like-count-{{ product.pk }}">{{ total_likes }}</span>
+                        </button>
+                    {% else %}
+                        <div class="text-center">
+                            <i class="fas fa-heart text-danger"></i> {{ total_likes }} likes
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Product Details Tabs -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="productTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="description-tab" data-bs-toggle="tab" 
+                                data-bs-target="#description" type="button" role="tab">
+                            <i class="fas fa-info-circle"></i> Description
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" 
+                                data-bs-target="#reviews" type="button" role="tab">
+                            <i class="fas fa-star"></i> Reviews ({{ reviews.count }})
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="specifications-tab" data-bs-toggle="tab" 
+                                data-bs-target="#specifications" type="button" role="tab">
+                            <i class="fas fa-list"></i> Specifications
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="productTabsContent">
+                    <!-- Description Tab -->
+                    <div class="tab-pane fade show active" id="description" role="tabpanel">
+                        <h5>Product Description</h5>
+                        <p>{{ product.description|linebreaks }}</p>
+                        
+                        <h6>Product Details</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Category:</strong> {{ product.category.name }}</li>
+                            <li><strong>Stock:</strong> {{ product.stock }} units available</li>
+                            <li><strong>Added:</strong> {{ product.created_at|date:"F j, Y" }}</li>
+                            <li><strong>Last Updated:</strong> {{ product.updated_at|date:"F j, Y" }}</li>
+                        </ul>
+                    </div>
+                    
+                    <!-- Reviews Tab -->
+                    <div class="tab-pane fade" id="reviews" role="tabpanel">
+                        {% if avg_rating %}
+                            <div class="mb-4">
+                                <h5>Average Rating</h5>
+                                <div class="d-flex align-items-center">
+                                    <div class="me-3">
+                                        {% for i in "12345" %}
+                                            {% if forloop.counter <= avg_rating %}
+                                                <i class="fas fa-star text-warning"></i>
+                                            {% else %}
+                                                <i class="far fa-star text-muted"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <span class="h6 mb-0">{{ avg_rating|floatformat:1 }} out of 5</span>
+                                    <small class="text-muted ms-2">({{ reviews.count }} review{{ reviews.count|pluralize }})</small>
+                                </div>
+                            </div>
+                        {% endif %}
+                        
+                        {% if user.is_authenticated and user != product.seller %}
+                            <div class="mb-4">
+                                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#reviewModal">
+                                    <i class="fas fa-plus"></i> Write a Review
+                                </button>
+                            </div>
+                        {% endif %}
+                        
+                        <!-- Reviews List -->
+                        {% if reviews %}
+                            {% for review in reviews %}
+                                <div class="border-bottom pb-3 mb-3">
+                                    <div class="d-flex align-items-start">
+                                        <img src="{{ review.user.profile.profile_picture.url }}" 
+                                             alt="{{ review.user.username }}" class="rounded-circle me-3" 
+                                             width="50" height="50" style="object-fit: cover;">
+                                        <div class="flex-grow-1">
+                                            <h6 class="mb-1">{{ review.title }}</h6>
+                                            <div class="mb-2">
+                                                {% for i in "12345" %}
+                                                    {% if forloop.counter <= review.rating %}
+                                                        <i class="fas fa-star text-warning"></i>
+                                                    {% else %}
+                                                        <i class="far fa-star text-muted"></i>
+                                                    {% endif %}
+                                                {% endfor %}
+                                                <small class="text-muted ms-2">
+                                                    by {{ review.user.username }} on {{ review.created_at|date:"M j, Y" }}
+                                                </small>
+                                            </div>
+                                            <p class="mb-2">{{ review.content }}</p>
+                                            {% if review.image %}
+                                                <img src="{{ review.image.url }}" alt="Review image" 
+                                                     class="img-thumbnail" style="max-width: 200px;">
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted">No reviews yet. Be the first to review this product!</p>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Specifications Tab -->
+                    <div class="tab-pane fade" id="specifications" role="tabpanel">
+                        <h5>Product Specifications</h5>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th style="width: 30%;">Name</th>
+                                <td>{{ product.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Category</th>
+                                <td>{{ product.category.name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Price</th>
+                                <td>${{ product.price }}</td>
+                            </tr>
+                            <tr>
+                                <th>Stock</th>
+                                <td>{{ product.stock }} units</td>
+                            </tr>
+                            <tr>
+                                <th>Seller</th>
+                                <td>{{ product.seller.get_full_name|default:product.seller.username }}</td>
+                            </tr>
+                            <tr>
+                                <th>Added Date</th>
+                                <td>{{ product.created_at|date:"F j, Y g:i A" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Related Products -->
+<div class="row mt-5">
+    <div class="col-12">
+        <h4><i class="fas fa-th"></i> Related Products</h4>
+        <div class="row">
+            <!-- This would show other products in the same category -->
+            <div class="col-12">
+                <p class="text-muted">Related products functionality will be implemented soon.</p>
+                <a href="{% url 'products:list' %}?category={{ product.category.id }}" class="btn btn-outline-primary">
+                    <i class="fas fa-eye"></i> View More in {{ product.category.name }}
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Review Modal (for logged-in users) -->
+{% if user.is_authenticated and user != product.seller %}
+<div class="modal fade" id="reviewModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Write a Review</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="reviewForm">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label for="reviewTitle" class="form-label">Review Title</label>
+                        <input type="text" class="form-control" id="reviewTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reviewRating" class="form-label">Rating</label>
+                        <select class="form-control" id="reviewRating" required>
+                            <option value="">Select Rating</option>
+                            <option value="5">5 - Excellent</option>
+                            <option value="4">4 - Very Good</option>
+                            <option value="3">3 - Good</option>
+                            <option value="2">2 - Fair</option>
+                            <option value="1">1 - Poor</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reviewContent" class="form-label">Review</label>
+                        <textarea class="form-control" id="reviewContent" rows="4" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reviewImage" class="form-label">Image (Optional)</label>
+                        <input type="file" class="form-control" id="reviewImage" accept="image/*">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitReview()">Submit Review</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function addToCart(productId) {
+    alert('Add to cart functionality will be implemented soon! Product ID: ' + productId);
+}
+
+function toggleLike(productId) {
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    fetch(`/products/${productId}/like/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrfToken,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        const likeBtn = document.getElementById(`like-btn-${productId}`);
+        const likeCount = document.getElementById(`like-count-${productId}`);
+        
+        if (data.liked) {
+            likeBtn.innerHTML = '<i class="fas fa-heart"></i> Liked <span id="like-count-' + productId + '">' + data.total_likes + '</span>';
+        } else {
+            likeBtn.innerHTML = '<i class="far fa-heart"></i> Like <span id="like-count-' + productId + '">' + data.total_likes + '</span>';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating like status');
+    });
+}
+
+function submitReview() {
+    alert('Review functionality will be implemented soon!');
+    // Future implementation for submitting reviews
+}
+</script>
+{% endblock %}

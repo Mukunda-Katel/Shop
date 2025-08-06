@@ -1,0 +1,295 @@
+{% extends 'base.html' %}
+
+{% block title %}My Products - ShoppingMart{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2><i class="fas fa-box"></i> My Products</h2>
+            <a href="{% url 'products:create' %}" class="btn btn-success">
+                <i class="fas fa-plus"></i> Add New Product
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Total Products</h6>
+                        <h3 class="mb-0">{{ page_obj.paginator.count }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-box fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Available</h6>
+                        <h3 class="mb-0">{{ available_count|default:0 }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Low Stock</h6>
+                        <h3 class="mb-0">{{ low_stock_count|default:0 }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Out of Stock</h6>
+                        <h3 class="mb-0">{{ out_of_stock_count|default:0 }}</h3>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-times-circle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Products List -->
+{% if page_obj %}
+    <div class="row">
+        {% for product in page_obj %}
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card h-100">
+                <div class="position-relative">
+                    <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" 
+                         style="height: 200px; object-fit: cover;">
+                    
+                    <!-- Status Badge -->
+                    {% if not product.available %}
+                        <span class="position-absolute top-0 start-0 badge bg-secondary m-2">Disabled</span>
+                    {% elif product.stock == 0 %}
+                        <span class="position-absolute top-0 start-0 badge bg-danger m-2">Out of Stock</span>
+                    {% elif product.stock <= 5 %}
+                        <span class="position-absolute top-0 start-0 badge bg-warning m-2">Low Stock</span>
+                    {% else %}
+                        <span class="position-absolute top-0 start-0 badge bg-success m-2">Available</span>
+                    {% endif %}
+                </div>
+                
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">{{ product.name|truncatewords:5 }}</h5>
+                    <p class="card-text text-muted flex-grow-1">{{ product.description|truncatewords:15 }}</p>
+                    
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="h5 text-success mb-0">${{ product.price }}</span>
+                            <span class="badge bg-secondary">{{ product.category.name }}</span>
+                        </div>
+                        <small class="text-muted">{{ product.stock }} in stock</small>
+                    </div>
+                    
+                    <!-- Product Stats -->
+                    <div class="mb-3">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <small class="text-muted">Views</small>
+                                <div><strong>{{ product.views|default:0 }}</strong></div>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted">Likes</small>
+                                <div><strong>{{ product.productlike_set.count }}</strong></div>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted">Reviews</small>
+                                <div><strong>{{ product.reviews.count }}</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="mt-auto">
+                        <div class="btn-group w-100" role="group">
+                            <a href="{% url 'products:detail' product.pk %}" class="btn btn-outline-primary btn-sm" title="View">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{% url 'products:update' product.pk %}" class="btn btn-outline-warning btn-sm" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button class="btn btn-outline-info btn-sm" onclick="toggleAvailability({{ product.pk }})" title="Toggle Availability">
+                                {% if product.available %}
+                                    <i class="fas fa-eye-slash"></i>
+                                {% else %}
+                                    <i class="fas fa-eye"></i>
+                                {% endif %}
+                            </button>
+                            <a href="{% url 'products:delete' product.pk %}" class="btn btn-outline-danger btn-sm" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </a>
+                        </div>
+                        
+                        <div class="mt-2">
+                            <small class="text-muted">
+                                <i class="fas fa-calendar"></i> Added {{ product.created_at|date:"M j, Y" }}
+                                {% if product.updated_at != product.created_at %}
+                                    <br><i class="fas fa-edit"></i> Updated {{ product.updated_at|date:"M j, Y" }}
+                                {% endif %}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <nav aria-label="My Products pagination">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1">
+                                <i class="fas fa-angle-double-left"></i> First
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                                <i class="fas fa-angle-left"></i> Previous
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                                Next <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">
+                                Last <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </div>
+    {% endif %}
+    
+{% else %}
+    <!-- No Products Message -->
+    <div class="row">
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                <h4>You haven't added any products yet</h4>
+                <p class="text-muted mb-4">Start selling by adding your first product to the marketplace.</p>
+                <a href="{% url 'products:create' %}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus"></i> Add Your First Product
+                </a>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Quick Actions Sidebar -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1050;">
+    <div class="dropdown dropup">
+        <button class="btn btn-primary rounded-circle" type="button" data-bs-toggle="dropdown" 
+                style="width: 60px; height: 60px;">
+            <i class="fas fa-cog fa-lg"></i>
+        </button>
+        <ul class="dropdown-menu">
+            <li>
+                <a class="dropdown-item" href="{% url 'products:create' %}">
+                    <i class="fas fa-plus"></i> Add Product
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="#" onclick="exportProducts()">
+                    <i class="fas fa-download"></i> Export Data
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="#" onclick="bulkUpdate()">
+                    <i class="fas fa-edit"></i> Bulk Update
+                </a>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li>
+                <a class="dropdown-item" href="{% url 'products:list' %}">
+                    <i class="fas fa-store"></i> View Marketplace
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleAvailability(productId) {
+    if (confirm('Toggle product availability?')) {
+        // Future implementation: AJAX call to toggle product availability
+        alert('Toggle availability functionality will be implemented soon!');
+    }
+}
+
+function exportProducts() {
+    alert('Export functionality will be implemented soon!');
+}
+
+function bulkUpdate() {
+    alert('Bulk update functionality will be implemented soon!');
+}
+
+// Add some hover effects
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.card');
+    cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-5px)';
+            this.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '';
+        });
+    });
+});
+</script>
+{% endblock %}
